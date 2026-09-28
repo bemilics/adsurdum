@@ -1,44 +1,29 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { adSource } from '../ads'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Ad } from '../ads/types'
 import { AdCard } from '../components/AdCard'
+import { useAds } from '../hooks/useAds'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { usePersona } from '../hooks/usePersona'
-import { shuffle } from '../lib/shuffle'
 
 const PAGE = 10
 
 export function Feed() {
   const { persona } = usePersona()
-  const [all, setAll] = useState<Ad[]>([])
-  const [order, setOrder] = useState<Ad[]>([])
+  const { ads, error, reload } = useAds('card')
   const [visible, setVisible] = useState(PAGE)
   const [refreshing, setRefreshing] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const pullState = useRef({ startY: 0, pulling: false, distance: 0 })
   const [pullDistance, setPullDistance] = useState(0)
 
-  useEffect(() => {
-    let cancelled = false
-    adSource.getAds().then((ads) => {
-      if (cancelled) return
-      const cards = ads.filter((a) => a.format === 'card')
-      setAll(cards)
-      setOrder(shuffle(cards))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const items = useMemo(() => {
-    if (order.length === 0) return []
+    if (ads.length === 0) return []
     const out: Ad[] = []
     for (let i = 0; i < visible; i++) {
-      out.push(order[i % order.length])
+      out.push(ads[i % ads.length])
     }
     return out
-  }, [order, visible])
+  }, [ads, visible])
 
   const loadMore = useCallback(() => {
     setVisible((v) => v + PAGE)
@@ -48,11 +33,11 @@ export function Feed() {
 
   const refresh = useCallback(() => {
     setRefreshing(true)
-    setOrder(shuffle(all))
+    reload()
     setVisible(PAGE)
     scrollRef.current?.scrollTo({ top: 0 })
     setTimeout(() => setRefreshing(false), 400)
-  }, [all])
+  }, [reload])
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (scrollRef.current && scrollRef.current.scrollTop === 0) {
@@ -75,6 +60,15 @@ export function Feed() {
     pullState.current.pulling = false
     pullState.current.distance = 0
     setPullDistance(0)
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <p className="text-lg font-semibold">The ads refused to load.</p>
+        <p className="mt-1 text-sm text-fog">{error}</p>
+      </div>
+    )
   }
 
   if (items.length === 0) {

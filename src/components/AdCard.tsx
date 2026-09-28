@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { Ad } from '../ads/types'
 import type { Persona } from '../persona/storage'
+import { safeExternalUrl } from '../lib/url'
 import { PersonaTheater } from './PersonaTheater'
 
 interface Props {
@@ -8,13 +9,22 @@ interface Props {
   persona: Persona | null
 }
 
+/**
+ * Decides whether this ad gets a persona line. Deterministic on the ad id so
+ * the same ad keeps the same answer across re-renders (~1 in 7 ads).
+ */
+function showsTheater(adId: string): boolean {
+  let h = 0
+  for (const c of adId) h = (h * 31 + c.charCodeAt(0)) | 0
+  return Math.abs(h) % 7 === 0
+}
+
 export function AdCard({ ad, persona }: Props) {
-  const showTheater = useMemo(() => {
-    if (!persona) return false
-    let h = 0
-    for (const c of ad.id) h = (h * 31 + c.charCodeAt(0)) | 0
-    return Math.abs(h) % 7 === 0
-  }, [ad.id, persona])
+  const showTheater = useMemo(
+    () => Boolean(persona) && showsTheater(ad.id),
+    [ad.id, persona],
+  )
+  const href = safeExternalUrl(ad.destinationUrl)
 
   return (
     <article className="border-b border-line bg-void">
@@ -37,9 +47,9 @@ export function AdCard({ ad, persona }: Props) {
       <div className="px-4 py-3">
         <h2 className="text-base font-semibold leading-tight">{ad.headline}</h2>
         <p className="mt-1 text-sm leading-snug text-fog">{ad.body}</p>
-        {ad.destinationUrl ? (
+        {href ? (
           <a
-            href={ad.destinationUrl}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 inline-flex items-center gap-2 rounded-full bg-acid px-4 py-2 text-sm font-semibold text-void transition-opacity hover:opacity-90"
@@ -57,9 +67,9 @@ export function AdCard({ ad, persona }: Props) {
             {ad.cta}
           </button>
         )}
-        {ad.destinationUrl && (
+        {href && (
           <p className="mt-2 break-all text-[11px] text-fog/70">
-            The link you see is the link you touch: {ad.destinationUrl}
+            The link you see is the link you touch: {href}
           </p>
         )}
       </div>

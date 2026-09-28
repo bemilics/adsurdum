@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Persona } from '../persona/storage'
-import { clearPersona, loadPersona, savePersona } from '../persona/storage'
+import { loadPersona } from '../persona/storage'
 
+/**
+ * Persona shared by Feed and Explore, kept in sync across tabs through the
+ * `storage` event. Writes go through `persona/storage` directly — see GhostPersona.
+ */
 export function usePersona() {
   const [persona, setPersona] = useState<Persona | null>(() => loadPersona())
 
@@ -13,15 +17,5 @@ export function usePersona() {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  const save = useCallback((p: Persona) => {
-    savePersona(p)
-    setPersona(p)
-  }, [])
-
-  const clear = useCallback(() => {
-    clearPersona()
-    setPersona(null)
-  }, [])
-
-  return { persona, save, clear }
+  return { persona }
 }

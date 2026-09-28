@@ -7,7 +7,4 @@ export const mockSource: AdSource = {
   async getAds() {
     return ads
   },
-  async getAdById(id: string) {
-    return ads.find((a) => a.id === id) ?? null
-  },
 }

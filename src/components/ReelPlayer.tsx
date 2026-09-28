@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Ad } from '../ads/types'
+import { safeExternalUrl } from '../lib/url'
 
 interface Props {
   ad: Ad
@@ -9,6 +10,7 @@ interface Props {
 
 export function ReelPlayer({ ad, active, onSkip }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const href = safeExternalUrl(ad.destinationUrl)
 
   useEffect(() => {
     const v = videoRef.current
@@ -43,9 +45,9 @@ export function ReelPlayer({ ad, active, onSkip }: Props) {
         <div className="mt-0.5 text-sm text-paper/90">{ad.headline}</div>
         <p className="mt-2 line-clamp-2 text-sm text-fog">{ad.body}</p>
         <div className="mt-3 flex items-center gap-2">
-          {ad.destinationUrl ? (
+          {href ? (
             <a
-              href={ad.destinationUrl}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-full bg-acid px-4 py-2 text-sm font-semibold text-void"

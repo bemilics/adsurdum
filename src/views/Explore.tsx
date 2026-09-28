@@ -1,27 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { adSource } from '../ads'
+import { useState } from 'react'
 import type { Ad } from '../ads/types'
 import { AdCard } from '../components/AdCard'
+import { useAds } from '../hooks/useAds'
 import { usePersona } from '../hooks/usePersona'
-import { shuffle } from '../lib/shuffle'
 
 export function Explore() {
   const { persona } = usePersona()
-  const [ads, setAds] = useState<Ad[]>([])
+  const { ads, error } = useAds('card')
   const [selected, setSelected] = useState<Ad | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    adSource.getAds().then((all) => {
-      if (cancelled) return
-      setAds(shuffle(all.filter((a) => a.format === 'card')))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const tiles = useMemo(() => ads, [ads])
 
   return (
     <div className="h-full overflow-y-auto">
@@ -29,8 +15,11 @@ export function Explore() {
         <h1 className="text-xl font-bold tracking-tight">Explore</h1>
         <p className="text-xs text-fog">An uncurated grid of things nobody asked for.</p>
       </header>
+
+      {error && <p className="px-4 py-6 text-sm text-fog">{error}</p>}
+
       <div className="columns-2 gap-1 p-1 sm:columns-3">
-        {tiles.map((ad) => (
+        {ads.map((ad) => (
           <button
             key={ad.id}
             type="button"

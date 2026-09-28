@@ -8,7 +8,7 @@ Fase: **MVP funcional completo** — app corriendo, pendiente decisión de monet
 - Tailwind CSS v4 (CSS-first config)
 - vite-plugin-pwa (Workbox) — SW generado, offline shell, autoUpdate
 - Sin router (state-only), sin state lib, sin analytics, sin cookies
-- Lint: oxlint · Build: `tsc -b && vite build` (ambos pasan limpio)
+- Lint: oxlint · Test: vitest (`npm test`) · Build: `tsc -b && vite build` (todos pasan limpio)
 
 ## Decisiones tomadas
 | Fecha | Decisión | Razón |
@@ -24,7 +24,7 @@ Fase: **MVP funcional completo** — app corriendo, pendiente decisión de monet
 
 ## Completado (2026-09-20)
 - [x] Scaffold Vite + TS + Tailwind v4 + PWA
-- [x] `AdSource` interface + `mockSource` + catalog.json (**50 ads**: 46 cards + 4 reels)
+- [x] `AdSource` interface + `mockSource` + catalog.json (**50 ads**: 45 cards + 5 reels)
 - [x] App shell + TabBar (5 tabs: Feed, Explore, Reels, Persona, Truth)
 - [x] Feed: infinite scroll (IntersectionObserver), pull-to-refresh con re-shuffle real
 - [x] Explore: masonry CSS columns + modal de ad
@@ -34,6 +34,16 @@ Fase: **MVP funcional completo** — app corriendo, pendiente decisión de monet
 - [x] PWA: manifest, icons 192/512/maskable, SW con cache de picsum
 - [x] CSP en index.html (solo self + picsum + media CDN)
 - [x] Test mobile vía LAN (`vite --host`) — OK
+
+## Completado (2026-09-27)
+Auditoría con skills de calidad de código, ToS/legal y ciberseguridad. Solo se parcheó lo aprobado.
+- [x] Suite **vitest: 23 tests** sobre lógica pura (`lib`, `persona/storage`, `transparency`, `ads`)
+- [x] `useAds` unificado para Feed/Explore/Reels (con `.catch` → estado de error visible)
+- [x] Validación de `localStorage` + `ErrorBoundary` (evita pantalla en blanca ante datos corruptos)
+- [x] `safeExternalUrl` (allowlist http/https) en todos los `destinationUrl`
+- [x] `AdSource` sin `getAdById` + contrato de errores documentado
+- [x] `README.md` + `docs/ARCHITECTURE.md` + `docs/MODULES.md` + `docs/DECISIONS.md`
+- [x] Corregido arriba: catálogo real es **45 cards + 5 reels** (decía 46 + 4)
 
 ## Monetización — hallazgos de investigación (2026-09-20)
 
@@ -58,16 +68,69 @@ Fase: **MVP funcional completo** — app corriendo, pendiente decisión de monet
 - **Escala (50k+ pv)**: EthicalAds/Carbon/BuySellAds si audiencia es dev, o deals directos
 - **No recomendado**: AdSense puro
 
+## ToS/legal — hallazgos sobre la IDEA (2026-09-27)
+
+Auditoría aplicada al **spec** (`adsurdum-prod-spec.md`), no al código. No es asesoría legal:
+reporto riesgo con evidencia, la decisión final es del usuario. Los hallazgos sobre el **código
+actual** son los T1–T5 del backlog; esta sección es sobre el producto que se quiere construir.
+
+### Veredicto central
+
+> **Adsurdum tiene una contradicción interna, no un bug.** El pilar #1 (*"no tracking, no
+> third-party scripts, anonymous by design"* — spec:4) y la monetización #1 (*AdSense* — spec:13)
+> **no pueden coexistir**: NPA ≠ sin cookies, AdSense setea cookies y exige CMP para EEA.
+> Resolver esto desbloquea todo lo demás.
+
+### Hallazgos por severidad
+
+| ID | Hallazgo | Sev. | Veredicto | Estado |
+|---|---|---|---|---|
+| A1 | AdSense en un feed **100 % ads** viola "Valuable Inventory: No content" → rechazo/ban. Verificado: Google exige que el contenido del publisher supere a los anuncios en pantalla | crítico | **VIOLACIÓN** | **pendiente de decisión** |
+| A2 | Pilar "no tracking / no third-party scripts" vs. AdSense (spec:4 vs spec:13; BITACORA:61 ya lo había detectado) | crítico | **VIOLACIÓN** | **pendiente de decisión** |
+| A3 | **Comprobantes financieros en repo público**: nombre completo, nº de cuenta, IBAN, ID de transacción. El repo ya es público y git conserva el historial — borrar no sirve | alto | RIESGO_ALTO (PII) | pendiente: pipeline de redacción |
+| A4 | Amazon Associates exige disclosure **literal** *"As an Amazon Associate I earn from qualifying purchases."* (y prohíbe agregar otras declaraciones sobre Amazon) + Privacy Policy pública. "Sponsored · obviously" no calza | medio | RIESGO_MEDIO | pendiente |
+| A5 | Claim *"todos los ingresos se donan a Internet Archive"* sin comprobentes = publicidad engañosa si no se cumple. Usar su logo puede implicar aval | medio | RIESGO_MEDIO | pendiente |
+| A6 | UI "estilo Instagram" + tab **"Reels"** (spec:8-9). Meta protege sus elementos de producto | medio | RIESGO_MEDIO | pendiente · **hipótesis**: no verifiqué registros de marca |
+| A7 | Copy satírico + link de compra real (Fase 2 "absurd AND real"): la sátira no es defensa ante publicidad engañosa | medio | RIESGO_MEDIO | pendiente |
+| A8 | Onboarding/Privacy Policy con la inferencia del ad network: hoy es UX, con red integrada **es requisito legal** (Ley 19.628 / GDPR) | medio | RIESGO_MEDIO | pendiente — **no post-launch** |
+| A9 | Fase 2 "votación comunitaria": si el usuario pudiera **donar a través** del sitio deja de ser publisher y pasa a ser intermediario de recaudación | bajo | RIESGO_BAJO | regla fija |
+| A10 | Assets de terceros: `picsum.photos` (Unsplash) y bucket de Google | bajo | RIESGO_BAJO | pendiente — autoservir a escala |
+
+### Líneas rojas del proyecto (derivadas del spec)
+
+**Prohibido siempre:**
+- Clic en anuncios propios, o pedirlo → *invalid traffic* = ban + posible deuda
+- Tráfico bot / clickfarm / tráfico comprado
+- **Enviar la Ghost Persona a un servidor** (rompe el pilar entero)
+- **Recibir pagos o donaciones de usuarios en el sitio** — solo dona el sitio, su propio ingreso
+- Signup automatizado o compartir credenciales de publisher
+- AdSense en el feed sin resolver *Valuable Inventory*
+- Links de afiliado con shortener o redirect
+- Logo/marca de Internet Archive o Meta que implique aval
+
+**Permitido en esta versión:** mostrar anuncios servidos · leer inventario · clic de usuario hacia
+comercios · cuentas de publisher hechas a mano · tráfico orgánico · link directo visible.
+
+### Orden de desbloqueo
+1. **Resolver A1/A2** — elegir qué promete el producto (todo lo demás depende de esto)
+2. **A8** — Privacy Policy + onboarding (prerrequisito legal de cualquier red, no tarea post-launch)
+3. **A3** — pipeline de redacción de comprobantes antes de publicar el repo de transparencia
+4. **A4** — disclosure literal de afiliado
+5. **A5/A6/A7** — claim de donación, marca y copy antes de hacer repo público y monetizar
+
 ## Backlog
-- [ ] **Decidir monetización** (afiliados ahora vs. aparcar hasta escala)
+- [ ] **Decidir monetización** (afiliados ahora vs. aparcar hasta escala) — **primero resolver A1/A2**: AdSense vs. el pilar "no tracking" es una contradicción del producto, no de implementación
 - [ ] Comprar dominio + deploy (Cloudflare Pages / Netlify, HTTPS)
 - [ ] Test PWA install real (requiere HTTPS: cloudflared/ngrok tunnel o deploy)
 - [ ] Si afiliados: re-cataloguear 50 ads a productos reales con links + disclosure
-- [ ] Onboarding que declara qué puede inferir un ad network (del spec original)
+- [ ] Onboarding que declara qué puede inferir un ad network (del spec original) — **A8: con una red real integrada es requisito legal (Ley 19.628 / GDPR), no una tarea post-launch**
 - [ ] Páginas estáticas: About, Privacy Policy (requeridas por cualquier red/afiliado)
-- [ ] Repo público de transparencia + primer comprobante
+- [ ] Repo público de transparencia + primer comprobante, **con redacción de PII financiera antes de commitear** (A3: nombre, cuenta, IBAN, ID de transacción)
 - [ ] Reels con videos propios (placeholders actuales son mp4 de muestra de Google)
 - [ ] Copy final en Transparency según monetización elegida
+- [ ] **Antes de repo público y monetizar (A5–A7)**: claim de donación a Internet Archive con comprobantes y sin implied endorsement · revisar marcas/nombre (tab "Reels", UI tipo Instagram) · disclaimer de sátira junto a links de compra reales (Fase 2)
+- [ ] **Cerrar hallazgos ToS/legales (T1–T5)**: CTAs a `example.com`, disclosure de afiliado, matizar el claim "collects: nothing", Privacy Policy, LICENSE, `robots.txt`
+- [ ] Hardening de seguridad pendiente: CSP por header con `frame-ancestors` (el `<meta>` no lo admite), tope de scroll en Feed, Escape/foco en el modal de Explore
 
 ## Notas
 - Copy en inglés, tono deadpan. Tagline: "Scroll into the absurd."

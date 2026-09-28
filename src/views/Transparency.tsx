@@ -1,23 +1,8 @@
+import { ARCHIVE_URL, LEDGER, REPO_URL, ledgerTotals } from '../transparency/ledger'
 import { formatUsd } from '../lib/format'
 
-interface Entry {
-  date: string
-  source: string
-  grossCents: number
-  donatedCents: number
-  receiptUrl?: string
-}
-
-const ENTRIES: Entry[] = [
-  { date: '2026-09-01', source: 'Manual seed', grossCents: 0, donatedCents: 0 },
-]
-
-const REPO_URL = 'https://github.com/your-org/adsurdum-transparency'
-const ARCHIVE_URL = 'https://archive.org/donate'
-
 export function Transparency() {
-  const totalGross = ENTRIES.reduce((s, e) => s + e.grossCents, 0)
-  const totalDonated = ENTRIES.reduce((s, e) => s + e.donatedCents, 0)
+  const totals = ledgerTotals(LEDGER)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -42,23 +27,23 @@ export function Transparency() {
         <div className="mt-6 grid grid-cols-2 gap-3">
           <div className="rounded border border-line bg-ink p-4">
             <div className="text-xs uppercase tracking-wider text-fog">Lifetime revenue</div>
-            <div className="mt-1 text-2xl font-bold text-paper">{formatUsd(totalGross)}</div>
+            <div className="mt-1 text-2xl font-bold text-paper">{formatUsd(totals.grossCents)}</div>
           </div>
           <div className="rounded border border-line bg-ink p-4">
             <div className="text-xs uppercase tracking-wider text-fog">Donated</div>
-            <div className="mt-1 text-2xl font-bold text-acid">{formatUsd(totalDonated)}</div>
+            <div className="mt-1 text-2xl font-bold text-acid">{formatUsd(totals.donatedCents)}</div>
           </div>
         </div>
 
         <section className="mt-8">
           <h2 className="text-xs uppercase tracking-wider text-fog">Ledger</h2>
-          {ENTRIES.length === 0 ? (
+          {LEDGER.length === 0 ? (
             <p className="mt-3 text-sm text-fog">
               No entries. No revenue. Perfectly balanced.
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-line rounded border border-line">
-              {ENTRIES.map((e, i) => (
+              {LEDGER.map((e, i) => (
                 <li key={i} className="flex items-center justify-between bg-ink px-3 py-2 text-sm">
                   <div>
                     <div className="text-paper">{e.source}</div>
